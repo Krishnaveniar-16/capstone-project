@@ -1,43 +1,57 @@
 name: Frontend CI/CD
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - dev-frontend
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # Step 2: Login to Azure
       - name: Login to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Step 3: Login to ACR
       - name: Login to ACR
-        run: az acr login --name ${{ secrets.ACR_NAME }}
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_NAME }}.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
 
+      # Step 4: Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} frontend/
+          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} .
 
+      # Step 5: Scan Docker image with Trivy
       - name: Scan Docker image with Trivy
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@v0.10.1
         with:
           image-ref: ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }}
           format: table
 
-      - name: Push Docker image to ACR
-        run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }}
-
-      - name: Get AKS credentials
-        run: az aks get-credentials -g ${{ secrets.AKS_RESOURCE_GROUP }} -n ${{ secrets.AKS_CLUSTER_NAME }}
-
-      - name: Deploy Frontend to AKS
+      # Step 6: Push Docker image to ACR
+      - name: Push Docker image
         run: |
-          kubectl set image deployment/frontend-deployment frontend=${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }}
+          docker push ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }}
+
+      # Step 7: Get AKS credentials
+      - name: Get AKS credentials
+        run: |
+          az aks get-credentials -g ${{ secrets.AKS_RESOURCE_GROUP }} -n ${{ secrets.AKS_CLUSTER_NAME }}
+
+      # Step 8: Deploy frontend to AKS
+      - name: Deploy frontend to AKS
+        run: |
+          kubectl set image deployment/frontend-deployment frontend=${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} --record
