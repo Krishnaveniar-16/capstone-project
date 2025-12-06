@@ -25,7 +25,7 @@ jobs:
       - name: Login to ACR
         run: az acr login --name ${{ secrets.ACR_NAME }}
 
-      # Step 4: Build Docker image
+      # Step 4: Build Docker image 
       - name: Build Docker image
         run: |
           docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} frontend/
@@ -52,3 +52,5 @@ jobs:
       - name: Deploy frontend to AKS
         run: |
           kubectl set image deployment/frontend-deployment frontend=${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} --record
+
+#checking         

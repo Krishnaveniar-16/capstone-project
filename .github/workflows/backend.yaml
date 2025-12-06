@@ -1,0 +1,42 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches:
+      - dev-backend
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login to ACR
+        run: az acr login --name ${{ secrets.ACR_NAME }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/backend:${{ github.sha }} backend/
+
+      - name: Scan Docker image with Trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ secrets.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+          format: table
+
+      - name: Push Docker image to ACR
+        run: docker push ${{ secrets.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
+
+      - name: Get AKS credentials
+        run: az aks get-credentials -g ${{ secrets.AKS_RESOURCE_GROUP }} -n ${{ secrets.AKS_CLUSTER_NAME }}
+#checking
+      - name: Deploy Backend to AKS
+        run: |
+          kubectl set image deployment/backend-deployment backend=${{ secrets.ACR_NAME }}.azurecr.io/backend:${{ github.sha }}
