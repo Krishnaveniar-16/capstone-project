@@ -23,11 +23,7 @@ jobs:
 
       # Step 3: Login to ACR
       - name: Login to ACR
-        uses: azure/docker-login@v1
-        with:
-          login-server: ${{ secrets.ACR_NAME }}.azurecr.io
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
+        run: az acr login --name ${{ secrets.ACR_NAME }}
 
       # Step 4: Build Docker image
       - name: Build Docker image
