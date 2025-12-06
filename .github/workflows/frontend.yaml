@@ -28,7 +28,7 @@ jobs:
       # Step 4: Build Docker image
       - name: Build Docker image
         run: |
-          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} .
+          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/frontend:${{ github.sha }} frontend/
 
       # Step 5: Scan Docker image with Trivy
       - name: Scan Docker image with Trivy
